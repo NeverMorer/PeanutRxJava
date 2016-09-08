@@ -1,0 +1,46 @@
+<resources>
+    <string name="app_name">Peanut</string>
+    <string name="action_settings">Settings</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="title_activity_shot_dtail">ShotDtailActivity</string>
+    <string name="title_activity_picture_detail">PictureDetailActivity</string>
+    <string name="title_activity_login">LoginActivity</string>
+    <string name="title_activity_profile">ProfileActivity</string>
+    <string name="drawer_open">Open navigation drawer</string>
+    <string name="drawer_close">Close navigation drawer</string>
+    <string name="title_activity_like">LikeActivity</string>
+    <string name="title_activity_me">MeActivity</string>
+    <string name="title_activity_following">FollowingActivity</string>
+    <string name="title_activity_create">CreateActivity</string>
+    <string name="hint_bucket_description">描述</string>
+    <string name="hint_bucket_name">名字（必须）</string>
+    <string name="hint_shot_description">描述</string>
+    <string name="hint_shot_tags">标签，用英文逗号分割</string>
+    <string name="hint_shot_title">标题（必须）</string>
+    <string name="select_image_label">选择一个图片</string>
+    <string name="create_shot_tips">Dribbble 在后台创建作品。 创建成功后可能需要几分钟后才可以看到新的作品。</string>
+    <string name="title_activity_setting">SettingActivity</string>
+
+    <string name="create_create">创建作品</string>
+    <string name="create_drop">确定丢弃该内容？</string>
+    <string name="create_success">创建成功</string>
+    <string name="create_unauthentivate">只有Player才能发布作品</string>
+    <string name="create_error">网络错误</string>
+
+    <string name="following_follower">关注者</string>
+    <string name="following_login">请先登录</string>
+
+    <string name="like_like">喜爱</string>
+
+    <string name="login_code_error">出错啦，code为空</string>
+    <string name="login_token_error">出错啦，token为空</string>
+    <string name="login_success">登陆成功</string>
+
+    <string name="follow">关注</string>
+    <string name="unfollow">取消关注</string>
+    <string name="unfollowed">已取消关注</string>
+    <string name="followed">已关注</string>
+    <string name="setting">设置</string>
+</resources>
