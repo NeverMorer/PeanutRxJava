@@ -1,14 +1,15 @@
 package com.dhn.peanut.shots;
 
 
-
-import android.util.Log;
-
 import com.dhn.peanut.data.Shot;
-import com.dhn.peanut.data.base.LoadShotsCallback;
 import com.dhn.peanut.data.base.ShotDataSource;
 
 import java.util.List;
+
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
+import rx.schedulers.Schedulers;
+import rx.subscriptions.CompositeSubscription;
 
 /**
  * Created by DHN on 2016/5/31.
@@ -19,12 +20,14 @@ public class ShotPresenter implements ShotsContract.Presenter {
 
     private ShotsContract.View mShotView;
     private ShotsContract.View mDebutsView;
-    private ShotsContract.View mGifView;
+    private ShotsContract.View mTeamsView;
     private ShotDataSource mShotDataSource;
 
-    private int shotsPage = 1;
-    private int debutsPage = 1;
-    private int gifsPage = 1;
+    private CompositeSubscription mSubscriptions;
+
+    private int mShotsPage = 1;
+    private int mDebutsPage = 1;
+    private int mTeamPage = 1;
 
     public ShotPresenter(ShotsContract.View shotView,
                          ShotsContract.View debutsView,
@@ -33,98 +36,95 @@ public class ShotPresenter implements ShotsContract.Presenter {
 
         mShotView = shotView;
         mDebutsView = debutsView;
-        mGifView = gifView;
+        mTeamsView = gifView;
 
         mShotDataSource = dataSource;
 
         mShotView.setPresenter(this);
         mDebutsView.setPresenter(this);
-        mGifView.setPresenter(this);
+        mTeamsView.setPresenter(this);
+
+        mSubscriptions = new CompositeSubscription();
     }
 
     @Override
     public void loadShots(boolean isFirstPage) {
         if (isFirstPage == true) {
-            shotsPage = 1;
+            mShotsPage = 1;
         }
 
-        if (shotsPage == 1) {
+        if (mShotsPage == 1) {
             mShotView.showLoading();
         }
 
-        mShotDataSource.getShots(null, shotsPage, new LoadShotsCallback() {
-            @Override
-            public void onShotsLoaded(List<Shot> shots) {
-                mShotView.hideLoading();
-                mShotView.showLoadingIndicator(false);
-                mShotView.showShots(shots);
+        mShotDataSource.getShots(mShotsPage)
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe(new Action1<List<Shot>>() {
+                            @Override
+                            public void call(List<Shot> shots) {
+                                mShotView.hideLoading();
+                                mShotView.showLoadingIndicator(false);
+                                mShotView.showShots(shots);
+                            }
+                        });
 
-                //Log.e(TAG, "shots: " + shots);
-
-            }
-
-            @Override
-            public void onDataNotAvailable() {
-
-            }
-        });
-
-        shotsPage++;
+        mShotsPage++;
     }
 
     @Override
     public void loadDebuts(boolean isFirstPage) {
         if (isFirstPage == true) {
-            debutsPage = 1;
+            mDebutsPage = 1;
         }
 
-        if (debutsPage == 1) {
+        if (mDebutsPage == 1) {
             mDebutsView.showLoading();
         }
 
-        mShotDataSource.getDebuts(null, debutsPage, new LoadShotsCallback() {
-            @Override
-            public void onShotsLoaded(List<Shot> debuts) {
-                mDebutsView.hideLoading();
-                mDebutsView.showLoadingIndicator(false);
-                mDebutsView.showShots(debuts);
+        mShotDataSource.getDebuts(mDebutsPage)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<List<Shot>>() {
+                    @Override
+                    public void call(List<Shot> shots) {
+                        mDebutsView.hideLoading();
+                        mDebutsView.showLoadingIndicator(false);
+                        mDebutsView.showShots(shots);
+                    }
+                });
 
-            }
-
-            @Override
-            public void onDataNotAvailable() {
-
-            }
-        });
-
-        debutsPage++;
+        mDebutsPage++;
     }
 
     @Override
-    public void loadGifs(boolean isFirstPage) {
+    public void loadTeams(boolean isFirstPage) {
         if (isFirstPage == true) {
-            gifsPage = 1;
+            mTeamPage = 1;
         }
 
-        if (gifsPage == 1) {
-            mGifView.showLoading();
+        if (mTeamPage == 1) {
+            mTeamsView.showLoading();
         }
 
-        mShotDataSource.getGifs(null, gifsPage, new LoadShotsCallback() {
-            @Override
-            public void onShotsLoaded(List<Shot> gifs) {
-                mGifView.hideLoading();
-                mGifView.showLoadingIndicator(false);
-                mGifView.showShots(gifs);
-            }
+        mShotDataSource.getTeams(mTeamPage)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<List<Shot>>() {
+                    @Override
+                    public void call(List<Shot> shots) {
+                        mTeamsView.hideLoading();
+                        mTeamsView.showLoadingIndicator(false);
+                        mTeamsView.showShots(shots);
+                    }
+                });
 
-            @Override
-            public void onDataNotAvailable() {
+        mTeamPage++;
+    }
 
-            }
-        });
-
-        gifsPage++;
+    @Override
+    public void unsubscribe() {
+        mSubscriptions.clear();
     }
 
 

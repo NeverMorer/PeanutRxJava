@@ -23,7 +23,7 @@ public interface ShotsContract {
     interface Presenter {
         void loadShots(boolean isFirstPage);
         void loadDebuts(boolean isFirstPage);
-        void loadGifs(boolean isFirstPage);
-        
+        void loadTeams(boolean isFirstPage);
+        void unsubscribe();
     }
 }

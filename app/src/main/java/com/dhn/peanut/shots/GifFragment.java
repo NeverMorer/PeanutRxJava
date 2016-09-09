@@ -29,17 +29,17 @@ public class GifFragment extends BaseFragment {
         mRecyclerView.setLoadMoreListener(new AutoLoadRecyclerView.LoadMoreListener() {
             @Override
             public void loadMore() {
-                mPresenter.loadGifs(false);
+                mPresenter.loadTeams(false);
             }
         });
 
         mSwipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                mPresenter.loadGifs(true);
+                mPresenter.loadTeams(true);
             }
         });
 
-        mPresenter.loadGifs(true);
+        mPresenter.loadTeams(true);
     }
 }

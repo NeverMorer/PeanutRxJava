@@ -21,6 +21,8 @@ public class PeanutApplication extends Application {
         super.onCreate();
         mContext = this;
 
+
+
         Fresco.initialize(this);
         refWatcher = LeakCanary.install(this);
     }
@@ -34,4 +36,10 @@ public class PeanutApplication extends Application {
         return application.refWatcher;
     }
 
+    @Override
+    protected void attachBaseContext(Context base) {
+        super.attachBaseContext(base);
+//        MultiDex.install(this);
+
+    }
 }

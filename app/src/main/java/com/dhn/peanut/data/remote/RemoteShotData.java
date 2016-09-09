@@ -11,11 +11,19 @@ import com.dhn.peanut.PeanutApplication;
 import com.dhn.peanut.data.Shot;
 import com.dhn.peanut.data.base.LoadShotsCallback;
 import com.dhn.peanut.data.base.ShotDataSource;
+import com.dhn.peanut.retrofit.DribleApi;
 import com.dhn.peanut.util.Request4Shots;
 import com.dhn.peanut.util.RequestManager;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+
+import rx.Observable;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
+import rx.functions.Func1;
+import rx.schedulers.Schedulers;
 
 /**
  * Created by DHN on 2016/5/31.
@@ -24,16 +32,16 @@ public class RemoteShotData implements ShotDataSource {
 
     private static final String TAG = "RemoteShotData";
     public static RemoteShotData INSTANCE;
-    List<Shot> shots;
-    List<Shot> debuts;
-    List<Shot> gifs;
+    List<Shot> mShots;
+    List<Shot> mDebuts;
+    List<Shot> mTeams;
 
     private RequestQueue mRequestQueue;
 
     private RemoteShotData() {
-        shots = new ArrayList<>();
-        debuts = new ArrayList<>();
-        gifs = new ArrayList<>();
+        mShots = new ArrayList<>();
+        mDebuts = new ArrayList<>();
+        mTeams = new ArrayList<>();
 
         mRequestQueue = Volley.newRequestQueue(PeanutApplication.getContext());
     }
@@ -46,103 +54,98 @@ public class RemoteShotData implements ShotDataSource {
         return INSTANCE;
     }
 
+
     /**
      *
-     * @param sort
      * @param page
-     * @param callback
+     * @return
      */
     @Override
-    public void getShots(String sort, int page, final LoadShotsCallback callback) {
-        String url = Shot.BASE_URL + "?page=" + page;
-
-        if (sort != null) {
-            url += "&sort=" + sort;
-        }
-
+    public Observable<List<Shot>> getShots(int page) {
         if (page == 1) {
-            shots.clear();
+            mShots.clear();
         }
-        RequestManager.addRequest(mRequestQueue, new Request4Shots(
-                url,
-                new Response.Listener<ArrayList<Shot>>() {
+
+        //创建代理对象
+        final DribleApi.IShot shot = DribleApi.getInstance().create(DribleApi.IShot.class);
+
+        return shot.getShot(page)
+                .startWith(Observable.just(mShots))      //并和已加载的和网络数据流
+                .flatMap(new Func1<List<Shot>, Observable<Shot>>() {    //使发送Shot
                     @Override
-                    public void onResponse(ArrayList<Shot> response) {
-                        shots.addAll(response);
-                        callback.onShotsLoaded(shots);
+                    public Observable<Shot> call(List<Shot> shots) {
+                        return Observable.from(shots);
                     }
-                },
-                new Response.ErrorListener() {
+                })
+                .toList()                                               //发送一次List<Shot>
+                .map(new Func1<List<Shot>, List<Shot>>() {              //截获数据
                     @Override
-                    public void onErrorResponse(VolleyError error) {
-                        callback.onDataNotAvailable();
+                    public List<Shot> call(List<Shot> shots) {
+                        mShots = shots;
+                        return shots;
                     }
-                }
-        ), null);
+                });
+
     }
 
 
     @Override
-    public void getDebuts(String sort, int page, final LoadShotsCallback callback) {
-        String url = Shot.BASE_URL  + "?list=" + "debuts" + "&page=" + page;
-
-        if (sort != null) {
-            url += "&sort=" + sort;
-        }
-
-
+    public Observable<List<Shot>> getDebuts(int page) {
 
         if (page == 1) {
-            debuts.clear();
+            mDebuts.clear();
         }
-        RequestManager.addRequest(mRequestQueue, new Request4Shots(
-                url,
-                new Response.Listener<ArrayList<Shot>>() {
-                    @Override
-                    public void onResponse(ArrayList<Shot> response) {
 
-                        debuts.addAll(response);
-                        callback.onShotsLoaded(debuts);
-                    }
-                },
-                new Response.ErrorListener() {
+        //创建代理对象
+        final DribleApi.IShot shot = DribleApi.getInstance().create(DribleApi.IShot.class);
+
+        return shot.getDebut(page)                      //发起网络调用
+                .startWith(Observable.just(mDebuts))      //并和已加载的和网络数据流
+                .flatMap(new Func1<List<Shot>, Observable<Shot>>() {    //将元素转换为Shot
                     @Override
-                    public void onErrorResponse(VolleyError error) {
-                        callback.onDataNotAvailable();
+                    public Observable<Shot> call(List<Shot> shots) {
+                        return Observable.from(shots);
                     }
-                }
-        ), null);
+                })
+                .toList()                                               //将元素转换为发送一次List<Shot>
+                .map(new Func1<List<Shot>, List<Shot>>() {              //截获数据
+                    @Override
+                    public List<Shot> call(List<Shot> shots) {
+                        mDebuts = shots;
+                        return shots;
+                    }
+                });
     }
 
     @Override
-    public void getGifs(String sort, int page, final LoadShotsCallback callback) {
-        String url = Shot.BASE_URL + "?list=" + "animated" + "&page=" + page;
-
-        if (sort != null) {
-            url += "&sort=" + sort;
-        }
-
+    public Observable<List<Shot>> getTeams(int page) {
 
         if (page == 1) {
-            gifs.clear();
+            mTeams.clear();
         }
-        RequestManager.addRequest(mRequestQueue, new Request4Shots(
-                url,
-                new Response.Listener<ArrayList<Shot>>() {
-                    @Override
-                    public void onResponse(ArrayList<Shot> response) {
 
-                        gifs.addAll(response);
-                        callback.onShotsLoaded(gifs);
-                    }
-                },
-                new Response.ErrorListener() {
+        //创建代理对象
+        final DribleApi.IShot shot = DribleApi.getInstance().create(DribleApi.IShot.class);
+
+        return shot.getTeams(page)                      //发起网络调用
+                .startWith(Observable.just(mTeams))      //并和已加载的和网络数据流
+                .flatMap(new Func1<List<Shot>, Observable<Shot>>() {    //将元素转换为Shot
                     @Override
-                    public void onErrorResponse(VolleyError error) {
-                        callback.onDataNotAvailable();
+                    public Observable<Shot> call(List<Shot> shots) {
+                        return Observable.from(shots);
                     }
-                }
-        ), null);
+                })
+                .toList()                                               //将元素转换为发送一次List<Shot>
+                .map(new Func1<List<Shot>, List<Shot>>() {              //截获数据
+                    @Override
+                    public List<Shot> call(List<Shot> shots) {
+                        mTeams = shots;
+                        return shots;
+                    }
+                });
+
+
+
     }
 
 

@@ -4,14 +4,16 @@ import com.dhn.peanut.data.Shot;
 
 import java.util.List;
 
+import rx.Observable;
+
 /**
  * Created by DHN on 2016/5/31.
  */
 public interface ShotDataSource {
 
-    void getShots(String sort, int page, LoadShotsCallback callback);
-    void getDebuts(String sort, int page, LoadShotsCallback callback);
-    void getGifs(String sort, int page, LoadShotsCallback callback);
+    Observable<List<Shot>> getShots(int page);
+    Observable<List<Shot>> getDebuts(int page);
+    Observable<List<Shot>> getTeams(int page);
 
 }
 
