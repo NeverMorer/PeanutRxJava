@@ -14,7 +14,6 @@
 - 发表作品
 
 #### 优化：
--	屏幕适配，支持横屏改变Recyclerview布局
 -	图片预览
 -	Material Design设计
 -	MVP模式
