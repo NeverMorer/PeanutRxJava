@@ -1,7 +1,7 @@
 # Dribble-MVP Android客户端
 * * *
 # Peanut
-这是一款基于Fresco, Volley, MVP架构快速开发的[https://dribbble.com](https://dribbble.com/)第三方客户端。
+重构了[基于Volley的Peanut](https://github.com/gatsbydhn/Peanut)项目。基于RxJava, Retrofit, MVP架构开发的[https://dribbble.com](https://dribbble.com/)第三方客户端。
 #### 架构设计
 ![示意图](https://github.com/gatsbydhn/Peanut/blob/master/image/MVP.png)
 在这里我将Fragment作为View,对外界提供更新界面的方法比如showShots()、showLoading()等方法，在生命周期函数中或接收用户响应时调用Presenter提供的方法，将具体逻辑交给Presenter，Presenter从Model获取数据（这里可以提供一个接口，从网络和从数据库获取数据都可实现该接口），Presenter从Model获取数据后，将数据交给View对外提供的更新界面的方法，显示在界面上。
@@ -20,12 +20,14 @@
 -	MVP模式
 -	LeakCanary检测内存泄露
 -	图片预览
+-	RxJava使用
 
-#### 后期的工作：
-- 关键字搜索
-- 发表评论
-- 离线缓存
-
+### 关于RxJava和Retrofit学习
+可以参考我的博客：
+[Retrofit源码分析](http://www.jianshu.com/p/097947afddaf)
+[源码分析：Retrofit结合RxJava](http://www.jianshu.com/p/5249b551a1b8)
+[RxJava源码浅析一：构造数据源](http://www.jianshu.com/p/2de2976c7b82)
+[OKHttp源码解析](http://www.jianshu.com/p/d860bec13b41)
 
 ##下载
 [小米应用市场](http://app.xiaomi.com/detail/420500)
