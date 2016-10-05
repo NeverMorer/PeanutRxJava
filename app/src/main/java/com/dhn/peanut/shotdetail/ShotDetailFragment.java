@@ -90,7 +90,7 @@ public class ShotDetailFragment extends Fragment implements ShotDetailContract.V
 
         Log.e(TAG, "onActivityCreated");
 
-        //show data in view
+        //加载评论数据
         mPresenter.loadComment(mShot.getId());
         mRecyclerView.postDelayed(new Runnable() {
             @Override

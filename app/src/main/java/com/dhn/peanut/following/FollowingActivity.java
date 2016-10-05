@@ -18,6 +18,7 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.dhn.peanut.R;
 import com.dhn.peanut.data.Following;
+import com.dhn.peanut.retrofit.DribleApi;
 import com.dhn.peanut.util.AuthoUtil;
 import com.dhn.peanut.util.PeanutInfo;
 import com.dhn.peanut.util.Request4Following;
@@ -27,9 +28,13 @@ import com.victor.loading.rotate.RotateLoading;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Retrofit;
 
 public class FollowingActivity extends AppCompatActivity {
 
@@ -63,29 +68,27 @@ public class FollowingActivity extends AppCompatActivity {
             mRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
             mAdapter = new FollowingAdapter(this);
 
-            Request4Following request4Following = new Request4Following(
-                    PeanutInfo.URL_FOLLOWINGS,
-                    new Response.Listener<ArrayList<Following>>() {
-                        @Override
-                        public void onResponse(ArrayList<Following> response) {
-                            if (response.isEmpty()) {
-                                showNoData();
-                            } else {
-                                mRecyclerView.setAdapter(mAdapter);
-                                mAdapter.replaceData(response);
-                                mLoading.stop();
-                            }
-                        }
-                    },
-                    new Response.ErrorListener() {
-                        @Override
-                        public void onErrorResponse(VolleyError error) {
-
-                        }
+            Retrofit retrofit = DribleApi.getInstance();
+            DribleApi.IFollowing service = retrofit.create(DribleApi.IFollowing.class);
+            Call<List<Following>> call = service.getFollowList(PeanutInfo.HEAD_BEAR + AuthoUtil.getToken());
+            call.enqueue(new Callback<List<Following>>() {
+                @Override
+                public void onResponse(Call<List<Following>> call, retrofit2.Response<List<Following>> response) {
+                    List<Following> list = response.body();
+                    if (list.isEmpty()) {
+                        showNoData();
+                    } else {
+                        mRecyclerView.setAdapter(mAdapter);
+                        mAdapter.replaceData(list);
+                        mLoading.stop();
                     }
-            );
+                }
 
-            RequestManager.addRequest(mRequestQueue, request4Following, this);
+                @Override
+                public void onFailure(Call<List<Following>> call, Throwable t) {
+
+                }
+            });
         }
     }
 
@@ -106,6 +109,7 @@ public class FollowingActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+
         RequestManager.cancelAll(mRequestQueue, this);
     }
 

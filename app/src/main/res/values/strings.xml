@@ -38,8 +38,8 @@
     <string name="login_token_error">出错啦，token为空</string>
     <string name="login_success">登陆成功</string>
 
-    <string name="follow">关注</string>
-    <string name="unfollow">取消关注</string>
+    <string name="menu_follow">关注</string>
+    <string name="menu_followed">取消关注</string>
     <string name="unfollowed">已取消关注</string>
     <string name="followed">已关注</string>
     <string name="setting">设置</string>

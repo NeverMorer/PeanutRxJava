@@ -64,6 +64,13 @@ public class BaseFragment extends Fragment implements ShotsContract.View {
     }
 
     @Override
+    public void onPause() {
+        super.onPause();
+        //防止内存泄露
+        mPresenter.unsubscribe();
+    }
+
+    @Override
     public void onDestroy() {
         super.onDestroy();
         RefWatcher refWatcher = PeanutApplication.getRefWatcher(getActivity());

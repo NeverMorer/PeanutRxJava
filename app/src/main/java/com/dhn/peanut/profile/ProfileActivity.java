@@ -10,6 +10,10 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.Request;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
 import com.dhn.peanut.R;
 import com.dhn.peanut.data.Shot;
 import com.dhn.peanut.data.base.ProfileCallback;
@@ -18,13 +22,32 @@ import com.dhn.peanut.data.remote.RemoteProfileDataSource;
 import com.dhn.peanut.login.LoginActivity;
 import com.dhn.peanut.util.AuthoUtil;
 import com.dhn.peanut.util.Log;
+import com.dhn.peanut.util.PeanutInfo;
+import com.dhn.peanut.util.RequestManager;
 import com.dhn.peanut.view.AutoLoadRecyclerView;
 import com.victor.loading.rotate.RotateLoading;
 
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import okhttp3.Headers;
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import rx.Observable;
+import rx.Subscriber;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
 public class ProfileActivity extends AppCompatActivity {
 
@@ -39,7 +62,6 @@ public class ProfileActivity extends AppCompatActivity {
     private Shot.User user;
     private ProfileAdapter adapter;
     private ProfileDataSource dataSource;
-    private boolean mHasNext;
     private boolean mIsFollowed;
 
     @Override
@@ -64,34 +86,31 @@ public class ProfileActivity extends AppCompatActivity {
         mLoading.start();
         mRecyclerView.setVisibility(View.INVISIBLE);
 
-        //menu
+        //处理menu状态
         if (AuthoUtil.isLogined()) {
             //已登录，查看是否follow
             mRecyclerView.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    dataSource.checkFollow(user.getId(), new ProfileCallback() {
-                        @Override
-                        public void onLoadProfileLoaded(List<Shot> shots, boolean hasNext) {
+                    dataSource.checkFollow(user.getId())
+                            .subscribe(new Subscriber<ResponseBody>() {
+                                @Override
+                                public void onCompleted() {
 
-                        }
+                                }
 
-                        @Override
-                        public void onFollowChecked(boolean isFollowed) {
-                            if (isFollowed) {
-                                mMenu.findItem(R.id.menu_follow).setTitle(R.string.unfollow);
-                                mIsFollowed = true;
-                            } else {
-                                mMenu.findItem(R.id.menu_follow).setTitle(R.string.follow);
-                                mIsFollowed = false;
-                            }
-                        }
+                                @Override
+                                public void onError(Throwable e) {
+                                    mMenu.findItem(R.id.menu_follow).setTitle(R.string.menu_follow);
+                                    mIsFollowed = false;
+                                }
 
-                        @Override
-                        public void onFollowed(boolean isFollow) {
-
-                        }
-                    });
+                                @Override
+                                public void onNext(ResponseBody responseBody) {
+                                    mMenu.findItem(R.id.menu_follow).setTitle(R.string.menu_followed);
+                                    mIsFollowed = true;
+                                }
+                            });
                 }
             }, 500);
         } else {
@@ -115,63 +134,61 @@ public class ProfileActivity extends AppCompatActivity {
         adapter = new ProfileAdapter(this, user);
         mRecyclerView.setAdapter(adapter);
 
-        //首次加载
-        dataSource.getShot(user.getId(), true, new ProfileCallback() {
-            @Override
-            public void onLoadProfileLoaded(List<Shot> shots, boolean hasNext) {
-
-                //Log.e("hasnext= " + hasNext + ", profile loaded: " + shots.toString());
-                mRecyclerView.setVisibility(View.VISIBLE);
-                mHasNext = hasNext;
-                if (!hasNext) {
-                    adapter.setShowFooter(false);
+        //加载第一页数据
+        Observable<List<Shot>> observable = dataSource.getShot(user.getId(), true);
+        if (observable == null) {
+            Toast.makeText(ProfileActivity.this, "无更多数据", Toast.LENGTH_SHORT).show();
+        } else {
+            observable.subscribe(new Subscriber<List<Shot>>() {
+                @Override
+                public void onCompleted() {
+                    mLoading.stop();
+                    mRecyclerView.setVisibility(View.VISIBLE);
                 }
-                adapter.replaceData(shots);
 
-                mLoading.stop();
+                @Override
+                public void onError(Throwable e) {
 
-            }
+                }
 
-            @Override
-            public void onFollowChecked(boolean isFollowd) {
-
-            }
-
-            @Override
-            public void onFollowed(boolean isFollow) {
-
-            }
-        });
+                @Override
+                public void onNext(List<Shot> shots) {
+                    Log.e(shots.toString());
+                    adapter.replaceData(shots);
+                }
+            });
+        }
 
 
+        //加载更多
         mRecyclerView.setLoadMoreListener(new AutoLoadRecyclerView.LoadMoreListener() {
             //滑动到底部时调用
             @Override
             public void loadMore() {
-                if (mHasNext) {
-                    dataSource.getShot(user.getId(), false, new ProfileCallback() {
-                        @Override
-                        public void onLoadProfileLoaded(List<Shot> shots, boolean hasNext) {
-                            mHasNext = hasNext;
-                            if (!hasNext) {
-                                adapter.setShowFooter(false);
-                            }
-                            adapter.replaceData(shots);
-                        }
-
-                        @Override
-                        public void onFollowChecked(boolean isFollowd) {
-
-                        }
-
-                        @Override
-                        public void onFollowed(boolean isFollow) {
-
-                        }
-                    });
-                } else {
+                Observable<List<Shot>> observable = dataSource.getShot(user.getId(), false);
+                if (observable == null) {
                     Toast.makeText(ProfileActivity.this, "无更多数据", Toast.LENGTH_SHORT).show();
+                } else {
+                    observable.subscribeOn(Schedulers.io())
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .subscribe(new Subscriber<List<Shot>>() {
+                                @Override
+                                public void onCompleted() {
+
+                                }
+
+                                @Override
+                                public void onError(Throwable e) {
+
+                                }
+
+                                @Override
+                                public void onNext(List<Shot> shots) {
+                                    adapter.replaceData(shots);
+                                }
+                            });
                 }
+
             }
         });
 
@@ -198,31 +215,31 @@ public class ProfileActivity extends AppCompatActivity {
                 startActivity(intent);
             } else {
 
-                dataSource.changeFollowState(user.getId(), !mIsFollowed, new ProfileCallback() {
+                Call<ResponseBody> call = dataSource.changeFollowState(user.getId(), !mIsFollowed);
 
+                call.enqueue(new Callback<ResponseBody>() {
                     @Override
-                    public void onLoadProfileLoaded(List<Shot> shots, boolean hasNext) {
+                    public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                        if (response.isSuccess()) {
 
-                    }
-
-                    @Override
-                    public void onFollowChecked(boolean isFollowed) {
-                    }
-
-                    @Override
-                    public void onFollowed(boolean requestFollow) {
-                        if (requestFollow) {
-                            Toast.makeText(ProfileActivity.this, R.string.followed, Toast.LENGTH_SHORT).show();
-                            mIsFollowed = true;
-                            item.setTitle(R.string.unfollow);
+                            if (mIsFollowed) {
+                                Toast.makeText(ProfileActivity.this, R.string.unfollowed, Toast.LENGTH_SHORT).show();
+                                item.setTitle(R.string.menu_follow);
+                            } else {
+                                Toast.makeText(ProfileActivity.this, R.string.followed, Toast.LENGTH_SHORT).show();
+                                item.setTitle(R.string.menu_followed);
+                            }
+                            mIsFollowed = !mIsFollowed;
                         } else {
-                            Toast.makeText(ProfileActivity.this, R.string.unfollowed, Toast.LENGTH_SHORT).show();
-                            mIsFollowed = false;
-                            item.setTitle(R.string.follow);
+                            Toast.makeText(ProfileActivity.this, "出了点小问题", Toast.LENGTH_SHORT).show();
                         }
                     }
-                });
 
+                    @Override
+                    public void onFailure(Call<ResponseBody> call, Throwable t) {
+
+                    }
+                });
             }
             return true;
         }else {

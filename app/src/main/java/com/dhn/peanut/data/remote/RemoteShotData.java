@@ -36,14 +36,11 @@ public class RemoteShotData implements ShotDataSource {
     List<Shot> mDebuts;
     List<Shot> mTeams;
 
-    private RequestQueue mRequestQueue;
-
     private RemoteShotData() {
         mShots = new ArrayList<>();
         mDebuts = new ArrayList<>();
         mTeams = new ArrayList<>();
 
-        mRequestQueue = Volley.newRequestQueue(PeanutApplication.getContext());
     }
 
     //TODO 单例
@@ -71,14 +68,14 @@ public class RemoteShotData implements ShotDataSource {
 
         return shot.getShot(page)
                 .startWith(Observable.just(mShots))      //并和已加载的和网络数据流
-                .flatMap(new Func1<List<Shot>, Observable<Shot>>() {    //使发送Shot
+                .flatMap(new Func1<List<Shot>, Observable<Shot>>() {    //将List<Shot>转换为Shot,使发送Shot
                     @Override
                     public Observable<Shot> call(List<Shot> shots) {
                         return Observable.from(shots);
                     }
                 })
-                .toList()                                               //发送一次List<Shot>
-                .map(new Func1<List<Shot>, List<Shot>>() {              //截获数据
+                .toList()                                               //将Shot转换为List<Shot>，发送一次List<Shot>
+                .map(new Func1<List<Shot>, List<Shot>>() {              //截获数据,缓存
                     @Override
                     public List<Shot> call(List<Shot> shots) {
                         mShots = shots;
@@ -143,9 +140,6 @@ public class RemoteShotData implements ShotDataSource {
                         return shots;
                     }
                 });
-
-
-
     }
 
 

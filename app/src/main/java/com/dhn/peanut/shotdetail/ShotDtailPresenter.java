@@ -6,8 +6,17 @@ import com.dhn.peanut.PeanutApplication;
 import com.dhn.peanut.data.Comment;
 import com.dhn.peanut.data.base.ShotDetailDataSource;
 import com.dhn.peanut.util.AuthoUtil;
+import com.dhn.peanut.util.Log;
 
+import java.io.IOException;
 import java.util.List;
+
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
+import rx.Subscriber;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
+import rx.schedulers.Schedulers;
 
 /**
  * Created by DHN on 2016/6/1.
@@ -16,7 +25,7 @@ public class ShotDtailPresenter implements ShotDetailContract.Presenter {
 
     private ShotDetailContract.View mView;
     private ShotDetailDataSource mDatasource;
-    private boolean mIsLiked;
+    private boolean mIsLiked = false;
 
 
     ShotDtailPresenter(ShotDetailContract.View view, ShotDetailDataSource dataSource) {
@@ -27,53 +36,56 @@ public class ShotDtailPresenter implements ShotDetailContract.Presenter {
 
     @Override
     public void loadComment(int shotId) {
+        //显示等待动画
         mView.showProgress();
 
-        mDatasource.getComment(shotId, new ShotDetailDataSource.LoadShotDetailCallBack() {
-            @Override
-            public void onCommentLoaded(List<Comment> comments) {
-                mView.showComments(comments);
-                mView.hideProgress();
-            }
-
-            @Override
-            public void onFavorChecked(boolean isLiked) {
-
-            }
-
-            @Override
-            public void onCommentNotAvailable() {
-                mView.showToast("出错啦，请检查网络后重试");
-            }
-        });
+        mDatasource.getComment(shotId)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<List<Comment>>() {
+                    @Override
+                    public void call(List<Comment> comments) {
+                        mView.hideProgress();
+                        mView.showComments(comments);
+                    }
+                });
     }
 
 
 
     @Override
     public void checkLiked(int id) {
-        mDatasource.checkIfLike(id, new ShotDetailDataSource.LoadShotDetailCallBack() {
-            @Override
-            public void onCommentLoaded(List<Comment> comments) {
+        mDatasource.checkIfLike(id)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Subscriber<ResponseBody>() {
+                    @Override
+                    public void onCompleted() {
 
-            }
+                    }
 
-            @Override
-            public void onFavorChecked(boolean isLiked) {
-                if (isLiked) {
-                    mView.showLike();
-                    mIsLiked = true;
-                } else {
-                    mView.showUnLike();
-                    mIsLiked = false;
-                }
-            }
+                    @Override
+                    public void onError(Throwable e) {
+                        mView.showUnLike();
+                    }
 
-            @Override
-            public void onCommentNotAvailable() {
-
-            }
-        });
+                    @Override
+                    public void onNext(ResponseBody responseBody) {
+                        String s = "";
+                        try {
+                            s = new String (responseBody.bytes());
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        if (s.equals("empty token")) {
+                            mView.showUnLike();
+                        } else {
+                            mView.showLike();
+                            //标记喜欢
+                            mIsLiked = true;
+                        }
+                    }
+                });
     }
 
     @Override

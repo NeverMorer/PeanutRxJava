@@ -42,7 +42,7 @@ public class PeanutInfo {
     public static final String HEAD_BEAR = " Bearer ";
     public static String mState;
 
-    public static final String LOGIN_URL = "https://api.dribbble.com/v1" + "?" +
+    public static final String LOGIN_URL = LOGIN_URL_BASE + "?" +
                     "client_id=" + CLIENT_ID +
                     "&redirect_uri=" + CALLBACK_URL +
                     "&scope=" + "public write comment upload" +

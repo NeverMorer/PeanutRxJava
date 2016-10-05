@@ -7,8 +7,10 @@ import com.android.volley.toolbox.Volley;
 import com.dhn.peanut.PeanutApplication;
 import com.dhn.peanut.data.LikedShot;
 import com.dhn.peanut.data.Shot;
+import com.dhn.peanut.retrofit.DribleApi;
 import com.dhn.peanut.util.AuthoUtil;
 import com.dhn.peanut.util.Log;
+import com.dhn.peanut.util.PeanutInfo;
 import com.dhn.peanut.util.Request4LikedShot;
 import com.dhn.peanut.util.Request4Shots;
 import com.dhn.peanut.util.RequestManager;
@@ -16,47 +18,25 @@ import com.dhn.peanut.util.RequestManager;
 import java.util.ArrayList;
 import java.util.List;
 
+import retrofit2.Call;
+import retrofit2.Retrofit;
+import rx.Observable;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
+
 /**
  * Created by DHN on 2016/6/8.
  */
 public class LikeDataSource {
-    public interface LoadLikeCallback {
-        void onShotsLoaded(List<LikedShot> shots);
-        void onDataNotAvailable();
-    }
 
-    private RequestQueue requestQueue = Volley.newRequestQueue(PeanutApplication.getContext());
 
-    public void getLikes(final LoadLikeCallback loadLikeCallback) {
+    public Call<List<LikedShot>> getLikes() {
         String url = AuthoUtil.getLikesUrl() + "?per_page=100";
 
-        if (Log.DBG) {
-            Log.e("liked url = " + url);
-        }
-        if (url == null) {
-            loadLikeCallback.onDataNotAvailable();
-        } else {
-            Request4LikedShot request4LikedShot = new Request4LikedShot(
-                    url,
-                    new Response.Listener<ArrayList<LikedShot>>() {
-                        @Override
-                        public void onResponse(ArrayList<LikedShot> response) {
-                            if (Log.DBG) {
-                                Log.e("liked shot = " + response.toString());
-                            }
-                            loadLikeCallback.onShotsLoaded(response);
-                        }
-                    },
-                    new Response.ErrorListener() {
-                        @Override
-                        public void onErrorResponse(VolleyError error) {
-                            loadLikeCallback.onDataNotAvailable();
-                        }
-                    }
-            );
+        Retrofit retrofit = DribleApi.getInstance();
+        DribleApi.ILile service = retrofit.create(DribleApi.ILile.class);
 
-            RequestManager.addRequest(requestQueue, request4LikedShot, null);
-        }
+        return service.getLiked(url);
 
     }
 }

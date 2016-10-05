@@ -1,32 +1,38 @@
 package com.dhn.peanut.data.remote;
 
-import android.os.Handler;
-import android.os.Message;
-import android.widget.Toast;
-
-import com.android.volley.AuthFailureError;
-import com.android.volley.NetworkResponse;
-import com.android.volley.Request;
 import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.JsonObjectRequest;
-import com.dhn.peanut.PeanutApplication;
 import com.dhn.peanut.data.Shot;
 import com.dhn.peanut.data.base.ProfileCallback;
 import com.dhn.peanut.data.base.ProfileDataSource;
+import com.dhn.peanut.retrofit.DribleApi;
 import com.dhn.peanut.util.AuthoUtil;
 import com.dhn.peanut.util.Log;
 import com.dhn.peanut.util.PeanutInfo;
 import com.dhn.peanut.util.Request4Shots;
 import com.dhn.peanut.util.RequestManager;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Retrofit;
+import rx.Observable;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Func1;
+import rx.schedulers.Schedulers;
 
 /**
  * Created by DHN on 2016/6/15.
@@ -42,133 +48,84 @@ public class RemoteProfileDataSource implements ProfileDataSource {
     public RemoteProfileDataSource() {
         lists = new ArrayList<>();
         mRequestQueue = RequestManager.newInstance();
-
     }
 
     @Override
-    public void getShot(int userId, boolean first, final ProfileCallback callback) {
-        String url = null;
+    public Observable<List<Shot>> getShot(int userId, boolean first) {
+        String curUrl = null;
+
         if (first) {
             lists.clear();
-            url = PeanutInfo.URL_BASE + "/users/" + userId + "/shots";
+            curUrl = PeanutInfo.URL_BASE + "users/" + userId + "/shots";
         } else if (hasNext){
-            url = nextUrl;
-        } else {
-            //不会执行
-            return;
+            curUrl = nextUrl;
+        } else {                //没有更多数据
+            return null;
         }
 
-        Request4Shots request4Shots = new Request4Shots(
-                url,
-                new Response.Listener<ArrayList<Shot>>() {
+        Retrofit retrofit = DribleApi.getInstanceWithoutConverter();
+        DribleApi.IProfile service = retrofit.create(DribleApi.IProfile.class);
+        //创建Observable
+        return service.getShot(curUrl)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .flatMap(new Func1<retrofit2.Response<ResponseBody>, Observable<? extends List<Shot>>>() {
                     @Override
-                    public void onResponse(ArrayList<Shot> response) {
+                    public Observable<? extends List<Shot>> call(retrofit2.Response<ResponseBody> response) {
 
-                        Log.e(response.toString());
+                        String link = response.raw().header("Link");
+                        getNextUrl(link);       //截取Link首部
 
-                        lists.addAll(response);
-                        callback.onLoadProfileLoaded(lists, hasNext);
+                        try {
+                            BufferedReader br = new BufferedReader(new InputStreamReader(response.body().byteStream()));
+                            StringBuilder sb = new StringBuilder();
+                            String line = null;
+                            while ((line = br.readLine()) != null) {
+                                sb.append(line);
+                            }
+
+                            Gson gson = new Gson();
+                            List<Shot> shots = gson.fromJson(sb.toString(), new TypeToken<List<Shot>>() {
+                            }.getType());
+                            lists.addAll(shots);
+
+                            return Observable.from(shots).toList();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+
+                            Log.e("throw IOException, return null");
+                        }
+                        return null;
                     }
-                },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        Toast.makeText(PeanutApplication.getContext(), "请求失败", Toast.LENGTH_SHORT).show();
-                    }
-                }
-        ) {
-            @Override
-            protected Response<ArrayList<Shot>> parseNetworkResponse(NetworkResponse response) {
-                //获取下一页url
-                getNextUrl(response);
-                return super.parseNetworkResponse(response);
-            }
-        };
-
-        RequestManager.addRequest(mRequestQueue, request4Shots, null);
+                });
     }
 
     @Override
-    public void checkFollow(int userId, final ProfileCallback callback) {
-        String url = PeanutInfo.URL_CHECK_FOLLOWING_BASE + userId;
-        JsonObjectRequest request = new JsonObjectRequest(
-                Request.Method.GET,
-                url,
-                new Response.Listener<JSONObject>() {
-                    @Override
-                    public void onResponse(JSONObject response) {
-                        Log.e("checkFollow: onResponse");
-                    }
-                },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        Log.e("checkFollow: onErrorResponse");
-                        callback.onFollowChecked(isFollowed);
-                    }
-                }
-        ) {
-            @Override
-            public Map<String, String> getHeaders() throws AuthFailureError {
-                Map<String, String> header = new HashMap<>();
-                header.put(PeanutInfo.HEAD_AUTH_FILED, PeanutInfo.HEAD_BEAR + AuthoUtil.getToken());
-                header.putAll(super.getHeaders());
-                return header;
-            }
-
-            @Override
-            protected Response<JSONObject> parseNetworkResponse(NetworkResponse response) {
-                if (response.statusCode == 204 || response.statusCode == 201) {
-                    //Log.e("checkFollow: 已follow");
-                    isFollowed = true;
-                }
-                return super.parseNetworkResponse(response);
-            }
-        };
-
-        RequestManager.addRequest(mRequestQueue, request, null);
+    public Observable<ResponseBody> checkFollow(int userId) {
+        Retrofit retrofit = DribleApi.getInstanceWithoutConverter();
+        DribleApi.IProfile service = retrofit.create(DribleApi.IProfile.class);
+        return service.checkIfFollow(userId)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
     }
 
 
 
     @Override
-    public void changeFollowState(int userId, final boolean requestFollow, final ProfileCallback callback) {
-        int method = requestFollow ? Request.Method.PUT : Request.Method.DELETE;
-        String url = PeanutInfo.URL_FOLLOW_BASE + userId + "/follow";
-        final JsonObjectRequest request = new JsonObjectRequest(
-                method,
-                url,
-                new Response.Listener<JSONObject>() {
-                    @Override
-                    public void onResponse(JSONObject response) {
-                    }
-                },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        Log.e("chagneFollowState");
-                        callback.onFollowed(requestFollow);
-                    }
-                }
-        ) {
-            @Override
-            public Map<String, String> getHeaders() throws AuthFailureError {
-                Map<String, String> header = new HashMap<>();
-                header.put(PeanutInfo.HEAD_AUTH_FILED, PeanutInfo.HEAD_BEAR + AuthoUtil.getToken());
-                header.putAll(super.getHeaders());
-                return header;
-            }
-        };
+    public Call<ResponseBody> changeFollowState(int userId, final boolean requestFollow) {
+        Retrofit retrofit = DribleApi.getInstanceWithoutConverter();
+        DribleApi.IProfile service = retrofit.create(DribleApi.IProfile.class);
 
-        RequestManager.addRequest(mRequestQueue, request, null);
+        if (requestFollow) {
+            return service.followUser(userId, PeanutInfo.HEAD_BEAR + AuthoUtil.getToken());
+        } else {
+            return service.unFollowUser(userId, PeanutInfo.HEAD_BEAR + AuthoUtil.getToken());
+        }
+
     }
 
-    /**
-     * 从响应Link头部中获取获取下页url
-     * @param response
-     */
-    private void getNextUrl(NetworkResponse response) {
-        String link = response.headers.get("Link");
+
+    private void getNextUrl(String link) {
 
         Log.e("Link = " + link);
 

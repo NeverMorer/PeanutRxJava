@@ -21,6 +21,7 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.dhn.peanut.R;
+import com.dhn.peanut.retrofit.DribleApi;
 import com.dhn.peanut.util.AuthoUtil;
 import com.dhn.peanut.util.Log;
 import com.dhn.peanut.util.PeanutInfo;
@@ -30,11 +31,18 @@ import com.victor.loading.rotate.RotateLoading;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Retrofit;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -107,6 +115,7 @@ public class LoginActivity extends AppCompatActivity {
             if (Log.DBG) {
                 Log.e("login url = " + PeanutInfo.LOGIN_URL);
             }
+
             mWebView.loadUrl(PeanutInfo.LOGIN_URL);
         } else {
             //已获得token,直接使用
@@ -128,49 +137,59 @@ public class LoginActivity extends AppCompatActivity {
 
     /**
      * 利用code获取token
+     *
      * @param code
      */
     private void requestForAccessToken(String code) {
-        final JSONObject requestJson = new JSONObject();
-        try {
-            requestJson.put("client_id", PeanutInfo.CLIENT_ID);
-            requestJson.put("client_secret", PeanutInfo.CLIENT_SECRET);
-            requestJson.put("code", code);
-            requestJson.put("state", PeanutInfo.mState);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
+        String url = "https://dribbble.com/oauth/token";
+        Retrofit retrofit = DribleApi.getInstanceWithoutConverter();
+        DribleApi.ILogin loginService = retrofit.create(DribleApi.ILogin.class);
+        Map<String, String> map = new HashMap<>();
+        map.put("client_id", PeanutInfo.CLIENT_ID);
+        map.put("client_secret", PeanutInfo.CLIENT_SECRET);
+        map.put("code", code);
+        map.put("state", PeanutInfo.mState);
+        Call<ResponseBody> call = loginService.getToken(url, map);
 
-        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(
-                Request.Method.POST,
-                PeanutInfo.TOKEN_URL,
-                requestJson,
-                new Response.Listener<JSONObject>() {
-                    @Override
-                    public void onResponse(JSONObject response) {
+        call.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> response) {
+                BufferedReader br = new BufferedReader(new InputStreamReader(response.body().byteStream()));
+                StringBuilder sb = new StringBuilder();
+                String line = null;
 
-                        try {
-                            //保存token
-                            String accessToken = (String) response.get("access_token");
-                            AuthoUtil.putToken(accessToken);
-
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-
-                        Toast.makeText(LoginActivity.this, R.string.login_success, Toast.LENGTH_LONG).show();
-                        CookieManager.getInstance().removeAllCookie();
-                        onCompleteAuth();
+                try {
+                    while ((line = br.readLine()) != null) {
+                        sb.append(line);
                     }
-                },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        Toast.makeText(LoginActivity.this, R.string.login_token_error, Toast.LENGTH_SHORT).show();
-                    }
-                });
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
 
-        RequestManager.addRequest(mRequestQueue, jsonObjectRequest, null);
+                Log.e(sb.toString());
+
+                try {
+                    JSONObject jsonObject = new JSONObject(sb.toString());
+                    //获取token
+                    String accessToken = (String) jsonObject.get("access_token");
+                    AuthoUtil.putToken(accessToken);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                Toast.makeText(LoginActivity.this, R.string.login_success, Toast.LENGTH_LONG).show();
+                CookieManager.getInstance().removeAllCookie();
+                onCompleteAuth();
+
+
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+
+            }
+        });
+
     }
 
     private void onCompleteAuth() {
@@ -258,8 +277,6 @@ public class LoginActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
-
-
 
 
 }

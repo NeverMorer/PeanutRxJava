@@ -6,6 +6,7 @@ import com.dhn.peanut.data.base.ShotDataSource;
 
 import java.util.List;
 
+import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
 import rx.schedulers.Schedulers;
@@ -57,7 +58,7 @@ public class ShotPresenter implements ShotsContract.Presenter {
             mShotView.showLoading();
         }
 
-        mShotDataSource.getShots(mShotsPage)
+        Subscription subscription = mShotDataSource.getShots(mShotsPage)
                         .subscribeOn(Schedulers.io())
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(new Action1<List<Shot>>() {
@@ -70,6 +71,7 @@ public class ShotPresenter implements ShotsContract.Presenter {
                         });
 
         mShotsPage++;
+        mSubscriptions.add(subscription);
     }
 
     @Override
@@ -82,7 +84,7 @@ public class ShotPresenter implements ShotsContract.Presenter {
             mDebutsView.showLoading();
         }
 
-        mShotDataSource.getDebuts(mDebutsPage)
+        Subscription subscription = mShotDataSource.getDebuts(mDebutsPage)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Action1<List<Shot>>() {
@@ -95,6 +97,7 @@ public class ShotPresenter implements ShotsContract.Presenter {
                 });
 
         mDebutsPage++;
+        mSubscriptions.add(subscription);
     }
 
     @Override
@@ -107,7 +110,7 @@ public class ShotPresenter implements ShotsContract.Presenter {
             mTeamsView.showLoading();
         }
 
-        mShotDataSource.getTeams(mTeamPage)
+        Subscription subscription = mShotDataSource.getTeams(mTeamPage)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Action1<List<Shot>>() {
@@ -120,6 +123,7 @@ public class ShotPresenter implements ShotsContract.Presenter {
                 });
 
         mTeamPage++;
+        mSubscriptions.add(subscription);
     }
 
     @Override

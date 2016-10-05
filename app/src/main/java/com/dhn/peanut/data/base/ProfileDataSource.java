@@ -1,11 +1,20 @@
 package com.dhn.peanut.data.base;
 
+import com.dhn.peanut.data.Shot;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import rx.Observable;
+
 /**
  * Created by DHN on 2016/6/15.
  */
 public interface ProfileDataSource {
 
-    void getShot(int userId, boolean first, final ProfileCallback callback);
-    void checkFollow(int userId, ProfileCallback callback);
-    void changeFollowState(int userId, boolean isFollow, ProfileCallback callback);
+    Observable<List<Shot>> getShot(int userId, boolean first);
+    Observable<ResponseBody> checkFollow(int userId);
+    Call<ResponseBody> changeFollowState(int userId, boolean isFollow);
 }
